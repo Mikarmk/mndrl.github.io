@@ -52,7 +52,6 @@
   </style>
 </head>
 <body>
-  <div id="tip">Теперь это кухня: пол с текстурой, стены с градиентом, окна с блеском</div>
   <div id="blocker">Кликните, чтобы начать</div>
   <div id="crosshair"></div>
   <svg id="barcodeSvg"></svg>
@@ -72,7 +71,7 @@
 
     // === LOAD TEXTURES ===
     const loader = new THREE.TextureLoader();
-    const floorTexture = loader.load('https://media.istockphoto.com/id/641717800/ru/%D1%84%D0%BE%D1%82%D0%BE/%D0%B1%D0%B5%D1%81%D1%88%D0%BE%D0%B2%D0%BD%D0%B0%D1%8F-%D1%82%D0%B5%D0%BA%D1%81%D1%82%D1%83%D1%80%D0%B0-%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D1%8F%D0%BD%D0%BD%D0%BE%D0%B3%D0%BE-%D0%BF%D0%BE%D0%BB%D0%B0.jpg?s=612x612&w=0&k=20&c=S12JJhqkWFDHxJDWoUiJzUB7zVOnwnR3HeNDsJa3SUY=');
+    const floorTexture = loader.load('textures/wood_floor.jpg');
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(8,8);
     const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture });
@@ -81,23 +80,22 @@
     floor.rotation.x = -Math.PI/2;
     scene.add(floor);
 
-    const wallTextureUrl = 'https://bigfoto.name/photo/uploads/posts/2023-10/1696314936_bigfoto-name-p-tekstura-besshovnaya-v-interere-72.jpg';
+    const wallTextureUrl = 'textures/wall_texture.png';
     let wallMaterial;
-    if (wallTextureUrl) {
-      const wallTex = loader.load(wallTextureUrl);
-      wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping;
-      wallTex.repeat.set(3,1);
-      wallMaterial = new THREE.MeshPhongMaterial({ map: wallTex });
-    } else {
-      wallMaterial = new THREE.MeshPhongMaterial({ color: 0xe0e7f5 });
-    }
+    const wallTex = loader.load(wallTextureUrl);
+    wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping;
+    wallTex.repeat.set(3,1);
+    wallMaterial = new THREE.MeshPhongMaterial({ map: wallTex });
     const backWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 6), wallMaterial);
     backWall.position.set(0, 3, -9); scene.add(backWall);
     const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(18, 6), wallMaterial);
     leftWall.position.set(-10, 3, 0); leftWall.rotation.y = Math.PI/2; scene.add(leftWall);
     const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(18, 6), wallMaterial);
     rightWall.position.set(10, 3, 0); rightWall.rotation.y = -Math.PI/2; scene.add(rightWall);
-    const ceilMat = new THREE.MeshPhongMaterial({ color: 0xfafcff });
+    const ceilingTexture = loader.load('textures/Ceiling.png');
+    ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
+    ceilingTexture.repeat.set(7, 7);
+    const ceilMat = new THREE.MeshPhongMaterial({ map: ceilingTexture });
     const ceil = new THREE.Mesh(new THREE.PlaneGeometry(28, 22), ceilMat);
     ceil.rotation.x = Math.PI/2; ceil.position.y = 6; scene.add(ceil);
 
@@ -165,6 +163,208 @@
     handle.position.set(0.95,2.2,1.29);
     doorGroup.add(handle);
 
+    // === KITCHEN COUNTER ===
+    function createKitchenCounter() {
+      // Counter materials
+      const counterTopMat = new THREE.MeshPhongMaterial({color: 0x5a5a5a});
+      const counterBodyMat = new THREE.MeshPhongMaterial({color: 0x8a8a8a});
+      const sinkMat = new THREE.MeshPhongMaterial({color: 0xcccccc, shininess: 50});
+      const faucetMat = new THREE.MeshPhongMaterial({color: 0xaaaaaa, shininess: 80});
+
+      // Create counter group
+      const counterGroup = new THREE.Group();
+      scene.add(counterGroup);
+
+      // Counter base (cabinets)
+      const counterBase = new THREE.Mesh(
+        new THREE.BoxGeometry(6, 0.8, 0.6),
+        counterBodyMat
+      );
+      counterBase.position.set(-3, 0.4, -8);
+      counterGroup.add(counterBase);
+
+      // Counter top
+      const counterTop = new THREE.Mesh(
+        new THREE.BoxGeometry(6.2, 0.05, 0.7),
+        counterTopMat
+      );
+      counterTop.position.set(-3, 0.9, -8);
+      counterGroup.add(counterTop);
+
+      // Sink
+      const sink = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.08, 0.5),
+        sinkMat
+      );
+      sink.position.set(-3, 0.92, -7.5);
+      counterGroup.add(sink);
+
+      // Faucet
+      const faucetBase = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.05, 16),
+        faucetMat
+      );
+      faucetBase.position.set(-3, 0.98, -7.5);
+      counterGroup.add(faucetBase);
+
+      const faucetNeck = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.015, 0.15, 16),
+        faucetMat
+      );
+      faucetNeck.position.set(-3, 1.08, -7.5);
+      faucetNeck.rotation.x = -0.3;
+      counterGroup.add(faucetNeck);
+
+      const faucetSpout = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.015, 0.015),
+        faucetMat
+      );
+      faucetSpout.position.set(-3, 1.05, -7.4);
+      counterGroup.add(faucetSpout);
+
+      // Add some cabinet doors
+      for (let i = 0; i < 3; i++) {
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(0.4, 0.3, 0.02),
+          counterBodyMat
+        );
+        door.position.set(-3.8 + i * 1.3, 0.5, -7.9);
+        counterGroup.add(door);
+
+        const handle = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.05, 0.01),
+          faucetMat
+        );
+        handle.position.set(-3.8 + i * 1.3, 0.5, -7.85);
+        counterGroup.add(handle);
+      }
+    }
+
+    // Create the kitchen counter
+    createKitchenCounter();
+
+    // === ADDITIONAL KITCHEN CABINETS ===
+    function createKitchenCabinets() {
+      const cabinetMat = new THREE.MeshPhongMaterial({color: 0x9a9a9a});
+      const doorMat = new THREE.MeshPhongMaterial({color: 0xaaaaaa});
+      const handleMat = new THREE.MeshPhongMaterial({color: 0x555555});
+
+      // Upper cabinets (wall-mounted)
+      for (let i = 0; i < 4; i++) {
+        const upperCabinet = new THREE.Mesh(
+          new THREE.BoxGeometry(1.2, 0.4, 0.35),
+          cabinetMat
+        );
+        upperCabinet.position.set(-4.2 + i * 1.5, 2.2, -7.65);
+        scene.add(upperCabinet);
+
+        // Cabinet doors
+        const doorLeft = new THREE.Mesh(
+          new THREE.BoxGeometry(0.58, 0.35, 0.02),
+          doorMat
+        );
+        doorLeft.position.set(-4.5 + i * 1.5, 2.2, -7.5);
+        scene.add(doorLeft);
+
+        const doorRight = new THREE.Mesh(
+          new THREE.BoxGeometry(0.58, 0.35, 0.02),
+          doorMat
+        );
+        doorRight.position.set(-3.9 + i * 1.5, 2.2, -7.5);
+        scene.add(doorRight);
+
+        // Handles
+        const handleLeft = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.02, 0.05),
+          handleMat
+        );
+        handleLeft.position.set(-4.4 + i * 1.5, 2.2, -7.45);
+        scene.add(handleLeft);
+
+        const handleRight = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.02, 0.05),
+          handleMat
+        );
+        handleRight.position.set(-4.0 + i * 1.5, 2.2, -7.45);
+        scene.add(handleRight);
+      }
+
+      // Lower cabinets (under counter)
+      for (let i = 0; i < 3; i++) {
+        const lowerCabinet = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.3, 0.55),
+          cabinetMat
+        );
+        lowerCabinet.position.set(-4.5 + i * 1.7, 0.2, -7.65);
+        scene.add(lowerCabinet);
+
+        // Cabinet door
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(0.45, 0.25, 0.02),
+          doorMat
+        );
+        door.position.set(-4.5 + i * 1.7, 0.2, -7.4);
+        scene.add(door);
+
+        // Handle
+        const handle = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.05, 0.02),
+          handleMat
+        );
+        handle.position.set(-4.5 + i * 1.7, 0.2, -7.35);
+        scene.add(handle);
+      }
+
+      // Corner cabinet
+      const cornerCabinet = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+        cabinetMat
+      );
+      cornerCabinet.position.set(-6.2, 0.4, -6.5);
+      scene.add(cornerCabinet);
+
+      // Tall storage cabinet
+      const tallCabinet = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 2.0, 0.5),
+        cabinetMat
+      );
+      tallCabinet.position.set(-1.8, 1.0, -7.65);
+      scene.add(tallCabinet);
+
+      // Tall cabinet doors
+      const tallDoor1 = new THREE.Mesh(
+        new THREE.BoxGeometry(0.23, 1.9, 0.02),
+        doorMat
+      );
+      tallDoor1.position.set(-1.95, 1.0, -7.4);
+      scene.add(tallDoor1);
+
+      const tallDoor2 = new THREE.Mesh(
+        new THREE.BoxGeometry(0.23, 1.9, 0.02),
+        doorMat
+      );
+      tallDoor2.position.set(-1.65, 1.0, -7.4);
+      scene.add(tallDoor2);
+
+      // Handles for tall cabinet
+      const tallHandle1 = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.02, 0.05),
+        handleMat
+      );
+      tallHandle1.position.set(-1.95, 1.0, -7.35);
+      scene.add(tallHandle1);
+
+      const tallHandle2 = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.02, 0.05),
+        handleMat
+      );
+      tallHandle2.position.set(-1.65, 1.0, -7.35);
+      scene.add(tallHandle2);
+    }
+
+    // Create kitchen cabinets
+    createKitchenCabinets();
+
     // === BOXES WITH BARCODE DATA ===
     const boxBarcodes = [
       "123456789012", "987654321098", "135790246813", "246801357924", "112233445566"
@@ -187,21 +387,88 @@
     addBox(0, 1.3, 0.05, 0xfa709a, 4);
 
     // === CHAIRS ===
-    function addChair(x,z,rot) {
-      const mat1 = new THREE.MeshPhongMaterial({color:0xffffff});
-      const mat2 = new THREE.MeshPhongMaterial({color:0x888888});
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.46,0.08,0.46), mat1);
-      seat.position.set(x,0.46,z);
-      seat.rotation.y = rot; scene.add(seat);
-      const back = new THREE.Mesh(new THREE.BoxGeometry(0.46,0.46,0.07), mat1);
-      back.position.set(x,0.69,z - 0.19*Math.cos(rot)-0.19*Math.sin(rot));
-      back.rotation.y = rot; scene.add(back);
-      for(const dx of [-0.16,0.16]) for(const dz of [-0.16,0.16]){
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.42,12), mat2);
-        leg.position.set(x + dx*Math.cos(rot) - dz*Math.sin(rot), 0.22, z + dx*Math.sin(rot) + dz*Math.cos(rot));
-        scene.add(leg);
+    function addChair(x, z, rot) {
+      // Materials
+      const blackMat = new THREE.MeshPhongMaterial({color: 0x222222});
+      const grayMat = new THREE.MeshPhongMaterial({color: 0x555555});
+      const seatMat = new THREE.MeshPhongMaterial({color: 0x333333});
+      const metalMat = new THREE.MeshPhongMaterial({color: 0x777777, shininess: 30});
+
+      // Create a group for the chair
+      const chairGroup = new THREE.Group();
+      chairGroup.position.set(x, 0, z);
+      chairGroup.rotation.y = rot;
+      scene.add(chairGroup);
+
+      // Seat
+      const seatGeometry = new THREE.BoxGeometry(0.5, 0.05, 0.5);
+      const seat = new THREE.Mesh(seatGeometry, seatMat);
+      seat.position.y = 0.4;
+      chairGroup.add(seat);
+
+      // Backrest
+      const backrestGeometry = new THREE.BoxGeometry(0.45, 0.4, 0.05);
+      const backrest = new THREE.Mesh(backrestGeometry, seatMat);
+      backrest.position.set(0, 0.65, -0.2);
+      chairGroup.add(backrest);
+
+      // Armrests
+      const armrestGeometry = new THREE.BoxGeometry(0.15, 0.03, 0.3);
+      const leftArmrest = new THREE.Mesh(armrestGeometry, grayMat);
+      leftArmrest.position.set(-0.22, 0.45, 0.1);
+      leftArmrest.rotation.z = -0.1;
+      chairGroup.add(leftArmrest);
+
+      const rightArmrest = new THREE.Mesh(armrestGeometry, grayMat);
+      rightArmrest.position.set(0.22, 0.45, 0.1);
+      rightArmrest.rotation.z = 0.1;
+      chairGroup.add(rightArmrest);
+
+      // Base and wheels
+      const baseGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.05, 16);
+      const wheelGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.02, 16);
+
+      // Central column
+      const columnGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.35, 16);
+      const column = new THREE.Mesh(columnGeometry, metalMat);
+      column.position.y = 0.2;
+      chairGroup.add(column);
+
+      // Five wheels
+      const wheelPositions = [
+        {x: 0.18, z: 0.18},
+        {x: -0.18, z: 0.18},
+        {x: 0.18, z: -0.18},
+        {x: -0.18, z: -0.18},
+        {x: 0, z: -0.22}
+      ];
+
+      for (const pos of wheelPositions) {
+        const wheelBase = new THREE.Mesh(baseGeometry, blackMat);
+        wheelBase.position.set(pos.x, 0.02, pos.z);
+        chairGroup.add(wheelBase);
+
+        const wheel = new THREE.Mesh(wheelGeometry, grayMat);
+        wheel.position.set(pos.x, 0.01, pos.z);
+        chairGroup.add(wheel);
       }
+
+      // Support arms for backrest
+      const supportGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16);
+      const leftSupport = new THREE.Mesh(supportGeometry, metalMat);
+      leftSupport.position.set(-0.2, 0.5, -0.18);
+      leftSupport.rotation.x = 0.3;
+      leftSupport.rotation.z = 0.2;
+      chairGroup.add(leftSupport);
+
+      const rightSupport = new THREE.Mesh(supportGeometry, metalMat);
+      rightSupport.position.set(0.2, 0.5, -0.18);
+      rightSupport.rotation.x = 0.3;
+      rightSupport.rotation.z = -0.2;
+      chairGroup.add(rightSupport);
     }
+
+    // Add chairs to the scene
     addChair(-1.3, 1.0, Math.PI/9);
     addChair(1.3, 1.2, -Math.PI/7);
     addChair(-2.8, 2.6, Math.PI/12);
