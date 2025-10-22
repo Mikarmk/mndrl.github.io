@@ -1,51 +1,345 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <title>Штрих-код сканер на Quagga2</title>
-  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Офисная Кухня с Текстурой Пола и Штрихкодом</title>
   <style>
-    #camera {
-      width: 320px;
-      height: 240px;
-      border: 1px solid black;
+    body { margin: 0; background: #e8f0ff; overflow: hidden;}
+    #tip {
+      position: absolute; left: 12px; top: 12px;
+      background: #fff;
+      padding: 7px 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #3452b3a0;
+      font-family: sans-serif;
+      z-index: 10;
+    }
+    #blocker {
+      position: fixed; inset: 0;
+      background: #0009;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5em;
+      z-index: 99;
+      cursor: pointer;
+    }
+    #crosshair {
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px; height: 6px;
+      pointer-events: none;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 3.5px #4448;
+      z-index: 50;
+    }
+    #barcodeSvg {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      border-radius: 6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+      z-index: 100;
+      padding: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Сканер штрих-кода</h1>
-  <div id="camera"></div>
-  <p>Распознанный код: <span id="result"></span></p>
+  <div id="tip">Теперь это кухня: пол с текстурой, стены с градиентом, окна с блеском</div>
+  <div id="blocker">Кликните, чтобы начать</div>
+  <div id="crosshair"></div>
+  <svg id="barcodeSvg"></svg>
+
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
   <script>
-    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: document.querySelector('#camera'),
-          constraints: {
-            facingMode: "environment"
-          }
-        },
-        decoder: {
-          readers: ["code_128_reader", "ean_reader", "ean_8_reader"]
-        }
-      }, function (err) {
-        if (err) {
-          console.error(err);
-          return;
-        }
-        Quagga.start();
-      });
+    // === SCENE & CAMERA SETUP ===
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf6fafd);
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.6, 8);
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-      Quagga.onDetected(function (result) {
-        document.getElementById('result').textContent = result.codeResult.code;
-        Quagga.stop();
-      });
+    // === LOAD TEXTURES ===
+    const loader = new THREE.TextureLoader();
+    const floorTexture = loader.load('https://media.istockphoto.com/id/641717800/ru/%D1%84%D0%BE%D1%82%D0%BE/%D0%B1%D0%B5%D1%81%D1%88%D0%BE%D0%B2%D0%BD%D0%B0%D1%8F-%D1%82%D0%B5%D0%BA%D1%81%D1%82%D1%83%D1%80%D0%B0-%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D1%8F%D0%BD%D0%BD%D0%BE%D0%B3%D0%BE-%D0%BF%D0%BE%D0%BB%D0%B0.jpg?s=612x612&w=0&k=20&c=S12JJhqkWFDHxJDWoUiJzUB7zVOnwnR3HeNDsJa3SUY=');
+    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(8,8);
+    const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture });
+    const floorGeom = new THREE.PlaneGeometry(50,50);
+    const floor = new THREE.Mesh(floorGeom, floorMat);
+    floor.rotation.x = -Math.PI/2;
+    scene.add(floor);
+
+    const wallTextureUrl = 'https://bigfoto.name/photo/uploads/posts/2023-10/1696314936_bigfoto-name-p-tekstura-besshovnaya-v-interere-72.jpg';
+    let wallMaterial;
+    if (wallTextureUrl) {
+      const wallTex = loader.load(wallTextureUrl);
+      wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping;
+      wallTex.repeat.set(3,1);
+      wallMaterial = new THREE.MeshPhongMaterial({ map: wallTex });
     } else {
-      alert('getUserMedia not supported on your browser.');
+      wallMaterial = new THREE.MeshPhongMaterial({ color: 0xe0e7f5 });
     }
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 6), wallMaterial);
+    backWall.position.set(0, 3, -9); scene.add(backWall);
+    const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(18, 6), wallMaterial);
+    leftWall.position.set(-10, 3, 0); leftWall.rotation.y = Math.PI/2; scene.add(leftWall);
+    const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(18, 6), wallMaterial);
+    rightWall.position.set(10, 3, 0); rightWall.rotation.y = -Math.PI/2; scene.add(rightWall);
+    const ceilMat = new THREE.MeshPhongMaterial({ color: 0xfafcff });
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(28, 22), ceilMat);
+    ceil.rotation.x = Math.PI/2; ceil.position.y = 6; scene.add(ceil);
+
+    // === WINDOWS ===
+    function addWindow(x,y,z) {
+      const frameMat = new THREE.MeshPhongMaterial({color:0xd0e0fb});
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 0.18), frameMat);
+      frame.position.set(x,y,z+0.01); scene.add(frame);
+      const glassMat = new THREE.ShaderMaterial({
+        uniforms: {baseColor: {value: new THREE.Color('#badcff')}},
+        vertexShader: `
+          varying vec2 vUv;
+          void main(){
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec2 vUv;
+          uniform vec3 baseColor;
+          void main(){
+            float l = 0.8 + 0.3 * sin(vUv.x*8.0 + vUv.y*10.0);
+            float edge = smoothstep(0.85,1.0,vUv.y) + smoothstep(0.05,0.0,vUv.y);
+            gl_FragColor = vec4(baseColor*l + edge*vec3(0.93,0.98,1.0)*0.5, 0.64 + edge*0.18);
+          }
+        `,
+        transparent:true
+      });
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(1.7,1.7,0.14), glassMat);
+      glass.position.set(x,y,z+0.021); scene.add(glass);
+    }
+    addWindow(-4, 3.6, -8.97);
+    addWindow(4, 2.15, -8.97);
+
+    // === FRIDGE ===
+    const fridgeMaterial = new THREE.MeshPhongMaterial({color:0xdbe5f3});
+    const fridgeWalls = [
+      new THREE.Mesh(new THREE.BoxGeometry(2,4,0.1), fridgeMaterial),
+      new THREE.Mesh(new THREE.BoxGeometry(0.1,4,2), fridgeMaterial),
+      new THREE.Mesh(new THREE.BoxGeometry(0.1,4,2), fridgeMaterial),
+      new THREE.Mesh(new THREE.BoxGeometry(2,0.14,2), fridgeMaterial),
+      new THREE.Mesh(new THREE.BoxGeometry(2,0.18,2), fridgeMaterial)
+    ];
+    fridgeWalls[0].position.set(0,2,-0.95);
+    fridgeWalls[1].position.set(-0.95,2,0);
+    fridgeWalls[2].position.set(0.95,2,0);
+    fridgeWalls[3].position.set(0,4,0);
+    fridgeWalls[4].position.set(0,0,0);
+    fridgeWalls.forEach(m=>scene.add(m));
+    const shelfMat = new THREE.MeshPhongMaterial({color:0xbfc9d6});
+    [3.04, 2.07, 1.10].forEach(y=>{
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.85,0.09,1.78), shelfMat);
+      shelf.position.set(0,y,0);
+      scene.add(shelf);
+    });
+    const doorGroup = new THREE.Group();
+    scene.add(doorGroup);
+    const doorMat = new THREE.MeshPhongMaterial({color:0xe3eaf5});
+    const door = new THREE.Mesh(new THREE.BoxGeometry(2,4,0.13), doorMat);
+    door.position.set(0,2,1.03);
+    doorGroup.add(door);
+    const handleMat = new THREE.MeshPhongMaterial({color:0x7a7a7a});
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.10,0.10,0.7,16), handleMat);
+    handle.rotation.x = Math.PI/2;
+    handle.position.set(0.95,2.2,1.29);
+    doorGroup.add(handle);
+
+    // === BOXES WITH BARCODE DATA ===
+    const boxBarcodes = [
+      "123456789012", "987654321098", "135790246813", "246801357924", "112233445566"
+    ];
+    const boxes = [];
+    function addBox(x,y,z,color,index) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.39, 0.30, 0.54),
+        new THREE.MeshPhongMaterial({color: color})
+      );
+      mesh.position.set(x,y,z);
+      mesh.userData.barcode = boxBarcodes[index];
+      scene.add(mesh);
+      boxes.push(mesh);
+    }
+    addBox(-0.5, 3.32, 0.36, 0xfaad6b, 0);
+    addBox(0.52, 3.1, -0.49, 0x52bbc7, 1);
+    addBox(-0.6, 2.32, -0.38, 0xc8a6f7, 2);
+    addBox(0.42, 2.38, 0.43, 0xaed947, 3);
+    addBox(0, 1.3, 0.05, 0xfa709a, 4);
+
+    // === CHAIRS ===
+    function addChair(x,z,rot) {
+      const mat1 = new THREE.MeshPhongMaterial({color:0xffffff});
+      const mat2 = new THREE.MeshPhongMaterial({color:0x888888});
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.46,0.08,0.46), mat1);
+      seat.position.set(x,0.46,z);
+      seat.rotation.y = rot; scene.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.46,0.46,0.07), mat1);
+      back.position.set(x,0.69,z - 0.19*Math.cos(rot)-0.19*Math.sin(rot));
+      back.rotation.y = rot; scene.add(back);
+      for(const dx of [-0.16,0.16]) for(const dz of [-0.16,0.16]){
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.42,12), mat2);
+        leg.position.set(x + dx*Math.cos(rot) - dz*Math.sin(rot), 0.22, z + dx*Math.sin(rot) + dz*Math.cos(rot));
+        scene.add(leg);
+      }
+    }
+    addChair(-1.3, 1.0, Math.PI/9);
+    addChair(1.3, 1.2, -Math.PI/7);
+    addChair(-2.8, 2.6, Math.PI/12);
+    addChair(2.2, 3.0, -Math.PI/12);
+
+    // === LIGHTS ===
+    scene.add(new THREE.PointLight(0xffffff, 1.1, 41).position.set(0, 8, 0));
+    scene.add(new THREE.AmbientLight(0xcad6e4, 0.8));
+
+    // === MOVEMENT CONTROLS ===
+    let moveForward=false, moveBackward=false, moveLeft=false, moveRight=false;
+    let velocity = new THREE.Vector3();
+    let direction = new THREE.Vector3();
+    let yaw = 0, pitch = 0;
+    let onGround = true, yVel = 0;
+    const jumpPower = 0.2, gravity = -0.008;
+    const blocker = document.getElementById('blocker');
+    blocker.addEventListener('click', () => { document.body.requestPointerLock(); });
+    document.addEventListener('pointerlockchange', () => {
+      blocker.style.display = (document.pointerLockElement === document.body) ? 'none' : 'flex';
+    });
+    document.addEventListener('mousemove', e => {
+      if(document.pointerLockElement === document.body){
+        yaw -= e.movementX*0.002;
+        pitch -= e.movementY*0.002;
+        pitch = Math.max(-Math.PI/2+0.2, Math.min(Math.PI/2-0.2, pitch));
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if(e.code==='KeyW'||e.code==='ArrowUp') moveForward=true;
+      if(e.code==='KeyS'||e.code==='ArrowDown') moveBackward=true;
+      if(e.code==='KeyA'||e.code==='ArrowLeft') moveLeft=true;
+      if(e.code==='KeyD'||e.code==='ArrowRight') moveRight=true;
+      if(e.code==='Space' && onGround) { yVel = jumpPower; onGround=false; }
+    });
+    document.addEventListener('keyup', e => {
+      if(e.code==='KeyW'||e.code==='ArrowUp') moveForward=false;
+      if(e.code==='KeyS'||e.code==='ArrowDown') moveBackward=false;
+      if(e.code==='KeyA'||e.code==='ArrowLeft') moveLeft=false;
+      if(e.code==='KeyD'||e.code==='ArrowRight') moveRight=false;
+    });
+
+    // === DOOR AND PICKING BOXES WITH BARCODE DISPLAY ===
+    const raycaster = new THREE.Raycaster();
+    let doorOpen = false, doorAnim = 0;
+    const barcodeSvg = document.getElementById('barcodeSvg');
+
+    function nearFridgeHandle() {
+      const hp = handle.getWorldPosition(new THREE.Vector3());
+      const dx = camera.position.x - hp.x;
+      const dz = camera.position.z - hp.z;
+      const dy = camera.position.y - hp.y;
+      return Math.sqrt(dx*dx + dz*dz) < 1.3 && Math.abs(dy) < 1.2;
+    }
+
+    window.addEventListener('mousedown', e => {
+      if(document.pointerLockElement !== document.body) return;
+      raycaster.setFromCamera({x:0, y:0}, camera);
+      const intersects = raycaster.intersectObjects([handle, ...boxes]);
+      if(intersects.length > 0){
+        if (intersects[0].object === handle && nearFridgeHandle()) {
+          doorOpen = !doorOpen;
+        } else if (boxes.includes(intersects[0].object) && doorOpen) {
+          const pickedBox = intersects[0].object;
+          scene.remove(pickedBox);
+          boxes.splice(boxes.indexOf(pickedBox), 1);
+          const code = pickedBox.userData.barcode;
+          JsBarcode(barcodeSvg, code, {
+            format: "EAN13",
+            lineColor: "#fff",
+            background: "#222",
+            width: 2,
+            height: 60,
+            displayValue: true,
+            fontSize: 16,
+            margin: 10
+          });
+          barcodeSvg.style.opacity = '1';
+          barcodeSvg.style.pointerEvents = 'auto';
+          setTimeout(() => {
+            barcodeSvg.style.opacity = '0';
+            barcodeSvg.style.pointerEvents = 'none';
+          }, 4000);
+        }
+      }
+    });
+
+    // === COLLISION DETECTION FOR FRIDGE ===
+    function blockCollision(px, pz) {
+      const minX = -0.92, maxX = 0.92;
+      const minZ = -0.90, maxZ = 0.80;
+      if(px > minX && px < maxX && pz > minZ && pz < maxZ){
+        if(pz < 0) return [px, minZ];
+        else return [px, maxZ];
+      }
+      return [px, pz];
+    }
+
+    // === ANIMATION LOOP ===
+    function animate() {
+      camera.rotation.set(pitch, yaw, 0);
+      direction.set(0,0,0);
+      if(moveForward) direction.z -= 1;
+      if(moveBackward) direction.z += 1;
+      if(moveLeft) direction.x -= 1;
+      if(moveRight) direction.x += 1;
+      direction.normalize();
+      direction.applyEuler(camera.rotation);
+      velocity.copy(direction).multiplyScalar(0.10);
+
+      let newX = camera.position.x + velocity.x;
+      let newZ = camera.position.z + velocity.z;
+      [newX, newZ] = blockCollision(newX, newZ);
+      camera.position.x = newX;
+      camera.position.z = newZ;
+      camera.position.y += yVel;
+      yVel += gravity;
+      if(camera.position.y < 1.6){
+        camera.position.y = 1.6;
+        yVel = 0;
+        onGround = true;
+      }
+      if(doorOpen && doorAnim < 1) doorAnim += 0.05;
+      if(!doorOpen && doorAnim > 0) doorAnim -= 0.05;
+      doorGroup.rotation.y = -Math.PI/2 * doorAnim;
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // === HANDLE RESIZE ===
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   </script>
 </body>
 </html>
